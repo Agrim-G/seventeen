@@ -1,0 +1,803 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Commute Fare Comparator</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, "Segoe UI", system-ui, sans-serif;
+      font-size: 14px;
+      line-height: 1.6;
+      background: #f3f4f6;
+      color: #1f2328;
+      min-height: 100vh;
+    }
+
+    /* ── Header ── */
+    header {
+      background: linear-gradient(135deg, #1d4ed8 0%, #4f46e5 100%);
+      color: #fff;
+      padding: 22px 28px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    header svg { flex-shrink: 0; }
+    header h1 { font-size: 1.3rem; font-weight: 700; letter-spacing: -0.3px; }
+    header p  { font-size: 0.82rem; opacity: 0.82; margin-top: 2px; }
+
+    /* ── Layout ── */
+    main {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 28px 20px 60px;
+    }
+
+    /* ── Card ── */
+    .card {
+      background: #fff;
+      border: 1px solid #e5e7eb;
+      border-radius: 10px;
+      padding: 24px;
+      margin-bottom: 22px;
+    }
+    .card-title {
+      font-size: 0.78rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #6b7280;
+      margin-bottom: 18px;
+    }
+
+    /* ── Input grid ── */
+    .input-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+      gap: 16px;
+    }
+    .field { display: flex; flex-direction: column; gap: 5px; }
+    .field label {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: #374151;
+    }
+    .field input, .field select {
+      padding: 9px 12px;
+      border: 1px solid #d1d5db;
+      border-radius: 7px;
+      font-size: 0.92rem;
+      font-family: inherit;
+      color: #1f2328;
+      background: #f9fafb;
+      transition: border-color 0.15s, box-shadow 0.15s;
+      outline: none;
+    }
+    .field input:focus, .field select:focus {
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 3px rgba(59,130,246,0.15);
+      background: #fff;
+    }
+    .field .hint {
+      font-size: 0.74rem;
+      color: #9ca3af;
+    }
+
+    /* ── Mode toggle ── */
+    .mode-toggles {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 6px;
+    }
+    .mode-toggle {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      padding: 7px 14px;
+      border: 1.5px solid #e5e7eb;
+      border-radius: 20px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      font-weight: 500;
+      background: #f9fafb;
+      transition: border-color 0.15s, background 0.15s, color 0.15s;
+      user-select: none;
+    }
+    .mode-toggle input[type="checkbox"] { display: none; }
+    .mode-toggle.active { border-color: #3b82f6; background: #eff6ff; color: #1d4ed8; }
+    .mode-toggle .dot {
+      width: 9px; height: 9px; border-radius: 50%;
+      background: currentColor; opacity: 0.7; flex-shrink: 0;
+    }
+
+    /* ── Compare button ── */
+    .btn-row { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 22px; }
+    .btn {
+      padding: 10px 24px;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.93rem;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+      transition: opacity 0.15s, transform 0.1s;
+    }
+    .btn:active { transform: scale(0.97); }
+    .btn-primary { background: #1d4ed8; color: #fff; }
+    .btn-primary:hover { opacity: 0.88; }
+    .btn-outline {
+      background: #fff;
+      color: #374151;
+      border: 1.5px solid #d1d5db;
+    }
+    .btn-outline:hover { background: #f3f4f6; }
+    .btn-outline:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    /* ── Results ── */
+    .results-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+    .results-header h2 { font-size: 1rem; font-weight: 700; }
+    .tag-cheapest {
+      display: inline-block;
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: 2px 9px;
+      border-radius: 12px;
+      background: #d1fae5;
+      color: #065f46;
+    }
+    .tag-fastest {
+      background: #dbeafe;
+      color: #1e40af;
+    }
+
+    .table-wrap { overflow-x: auto; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.88rem;
+    }
+    thead th {
+      text-align: left;
+      padding: 10px 14px;
+      background: #f7f8fa;
+      border-bottom: 2px solid #e5e7eb;
+      font-size: 0.78rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #6b7280;
+      white-space: nowrap;
+    }
+    tbody tr { border-bottom: 1px solid #f0f1f3; }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: #f8faff; }
+    tbody tr.row-best-cost { background: #f0fdf4; }
+    tbody tr.row-best-time { background: #eff6ff; }
+    tbody td {
+      padding: 12px 14px;
+      vertical-align: middle;
+    }
+
+    /* ── Mode cell ── */
+    .mode-cell { display: flex; align-items: center; gap: 10px; }
+    .mode-icon {
+      width: 34px; height: 34px;
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+      font-size: 1.1rem;
+    }
+    .mode-name { font-weight: 600; font-size: 0.9rem; }
+    .mode-sub  { font-size: 0.75rem; color: #9ca3af; }
+
+    /* ── Cost bar ── */
+    .cost-bar-wrap { display: flex; align-items: center; gap: 8px; }
+    .cost-bar-bg {
+      flex: 1; height: 6px; background: #e5e7eb; border-radius: 3px; overflow: hidden;
+    }
+    .cost-bar-fill { height: 100%; border-radius: 3px; transition: width 0.4s; }
+    .cost-val { font-weight: 700; min-width: 52px; text-align: right; }
+
+    /* ── Badge ── */
+    .badge {
+      display: inline-block;
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    /* ── Summary strip ── */
+    .summary-strip {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+      gap: 14px;
+      margin-bottom: 22px;
+    }
+    .stat-box {
+      background: #fff;
+      border: 1px solid #e5e7eb;
+      border-radius: 10px;
+      padding: 16px 18px;
+    }
+    .stat-box .label { font-size: 0.76rem; color: #6b7280; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+    .stat-box .value { font-size: 1.4rem; font-weight: 800; color: #1d4ed8; margin-top: 2px; }
+    .stat-box .sub   { font-size: 0.76rem; color: #9ca3af; margin-top: 1px; }
+
+    /* ── Empty state ── */
+    .empty-state {
+      text-align: center;
+      padding: 50px 20px;
+      color: #9ca3af;
+    }
+    .empty-state svg { margin: 0 auto 14px; display: block; opacity: 0.4; }
+    .empty-state p { font-size: 0.9rem; }
+
+    /* ── Download bar ── */
+    .download-bar {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+      padding: 14px 18px;
+      background: #f7f8fa;
+      border-top: 1px solid #e5e7eb;
+      border-radius: 0 0 10px 10px;
+      margin-top: 6px;
+    }
+    .download-label { font-size: 0.8rem; font-weight: 600; color: #6b7280; margin-right: 4px; }
+
+    /* ── Error ── */
+    .error-msg {
+      display: none;
+      color: #b91c1c;
+      font-size: 0.82rem;
+      font-weight: 500;
+      margin-top: 10px;
+      padding: 8px 12px;
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      border-radius: 6px;
+    }
+
+    @media (max-width: 600px) {
+      thead th:nth-child(4),
+      tbody td:nth-child(4) { display: none; }
+      .input-grid { grid-template-columns: 1fr 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
+    <rect width="36" height="36" rx="9" fill="rgba(255,255,255,0.18)"/>
+    <!-- Bus -->
+    <rect x="4" y="14" width="13" height="9" rx="2" fill="white"/>
+    <circle cx="7"  cy="24.5" r="1.8" fill="rgba(29,78,216,0.5)"/>
+    <circle cx="14" cy="24.5" r="1.8" fill="rgba(29,78,216,0.5)"/>
+    <rect x="5" y="15.5" width="5" height="3" rx="0.8" fill="rgba(29,78,216,0.4)"/>
+    <rect x="11" y="15.5" width="5" height="3" rx="0.8" fill="rgba(29,78,216,0.4)"/>
+    <!-- Car -->
+    <rect x="19" y="17" width="13" height="7" rx="2" fill="white"/>
+    <rect x="21" y="14.5" width="7" height="4" rx="1.5" fill="rgba(255,255,255,0.7)"/>
+    <circle cx="22" cy="25" r="1.8" fill="rgba(29,78,216,0.5)"/>
+    <circle cx="29" cy="25" r="1.8" fill="rgba(29,78,216,0.5)"/>
+    <!-- road line -->
+    <line x1="4" y1="27" x2="32" y2="27" stroke="rgba(255,255,255,0.35)" stroke-width="1.2" stroke-dasharray="3 2"/>
+  </svg>
+  <div>
+    <h1>Commute Fare Comparator</h1>
+    <p>Compare travel costs across common transport modes</p>
+  </div>
+</header>
+
+<main>
+
+  <!-- ── Inputs ── -->
+  <div class="card">
+    <div class="card-title">Journey Details</div>
+    <div class="input-grid">
+      <div class="field">
+        <label for="distance">Distance (km)</label>
+        <input type="number" id="distance" min="0.1" step="0.1" placeholder="e.g. 12" value="12" />
+        <span class="hint">One-way trip distance</span>
+      </div>
+      <div class="field">
+        <label for="trips">Trips per month</label>
+        <input type="number" id="trips" min="1" step="1" placeholder="e.g. 44" value="44" />
+        <span class="hint">e.g. 22 days × 2</span>
+      </div>
+      <div class="field">
+        <label for="fuelPrice">Fuel price (per litre)</label>
+        <input type="number" id="fuelPrice" min="0.1" step="0.01" placeholder="e.g. 1.65" value="1.65" />
+      </div>
+      <div class="field">
+        <label for="currency">Currency symbol</label>
+        <input type="text" id="currency" maxlength="3" placeholder="$" value="$" />
+      </div>
+    </div>
+
+    <!-- Custom overrides -->
+    <div style="margin-top:20px;">
+      <div class="card-title" style="margin-bottom:12px;">Custom Fare Overrides <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#9ca3af;font-size:0.76rem;">(optional — leave blank to use defaults)</span></div>
+      <div class="input-grid">
+        <div class="field">
+          <label for="busFare">Bus flat fare</label>
+          <input type="number" id="busFare" min="0" step="0.01" placeholder="auto" />
+        </div>
+        <div class="field">
+          <label for="trainFare">Train flat fare</label>
+          <input type="number" id="trainFare" min="0" step="0.01" placeholder="auto" />
+        </div>
+        <div class="field">
+          <label for="metroFare">Metro flat fare</label>
+          <input type="number" id="metroFare" min="0" step="0.01" placeholder="auto" />
+        </div>
+        <div class="field">
+          <label for="rideFare">Rideshare base fare</label>
+          <input type="number" id="rideFare" min="0" step="0.01" placeholder="auto" />
+        </div>
+      </div>
+    </div>
+
+    <div id="errorMsg" class="error-msg"></div>
+
+    <!-- Mode selector -->
+    <div style="margin-top:20px;">
+      <div class="card-title" style="margin-bottom:10px;">Include Modes</div>
+      <div class="mode-toggles" id="modeToggles"></div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="compare()">Compare Fares</button>
+      <button class="btn btn-outline" onclick="resetForm()">Reset</button>
+    </div>
+  </div>
+
+  <!-- ── Summary ── -->
+  <div class="summary-strip" id="summaryStrip" style="display:none"></div>
+
+  <!-- ── Results ── -->
+  <div class="card" id="resultsCard" style="display:none">
+    <div class="results-header">
+      <h2>Cost Breakdown by Mode</h2>
+      <span id="resultMeta" style="font-size:0.8rem;color:#6b7280;"></span>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Mode</th>
+            <th>One-way Fare</th>
+            <th>Monthly Cost</th>
+            <th>Annual Cost</th>
+            <th>Est. Time (min)</th>
+            <th>CO₂ / trip</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="resultsBody"></tbody>
+      </table>
+    </div>
+    <div class="download-bar" id="downloadBar">
+      <span class="download-label">Download:</span>
+      <button class="btn btn-outline" id="btnCSV"  onclick="downloadCSV()"  style="padding:6px 16px;font-size:0.82rem;">CSV</button>
+      <button class="btn btn-outline" id="btnJSON" onclick="downloadJSON()" style="padding:6px 16px;font-size:0.82rem;">JSON</button>
+      <button class="btn btn-outline" id="btnTXT"  onclick="downloadTXT()"  style="padding:6px 16px;font-size:0.82rem;">TXT Report</button>
+    </div>
+  </div>
+
+  <!-- ── Empty ── -->
+  <div class="card" id="emptyCard">
+    <div class="empty-state">
+      <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+        <circle cx="24" cy="24" r="22" stroke="#d1d5db" stroke-width="2"/>
+        <path d="M16 24h16M24 16v16" stroke="#d1d5db" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+      <p>Enter your journey details above and click <strong>Compare Fares</strong> to see results.</p>
+    </div>
+  </div>
+
+</main>
+
+<script>
+// ─────────────────────────────────────────────
+//  Mode definitions
+// ─────────────────────────────────────────────
+const MODES = [
+  {
+    id: "car",
+    label: "Personal Car",
+    icon: "🚗",
+    color: "#f59e0b",
+    bg: "#fef3c7",
+    // fuel-based: litres per 100 km
+    l100km: 8.5,
+    // extra per-km cost (parking, maintenance, depreciation)
+    extraPerKm: 0.12,
+    // avg speed km/h
+    speedKmh: 40,
+    co2GPerKm: 171,   // gCO₂/km
+    calcFare(dist, fuel) {
+      return (dist * this.l100km / 100) * fuel + dist * this.extraPerKm;
+    }
+  },
+  {
+    id: "bus",
+    label: "City Bus",
+    icon: "🚌",
+    color: "#10b981",
+    bg: "#d1fae5",
+    baseFare: 1.80,
+    ratePerKm: 0.09,
+    speedKmh: 22,
+    co2GPerKm: 68,
+    calcFare(dist) {
+      return this._override ?? (this.baseFare + dist * this.ratePerKm);
+    }
+  },
+  {
+    id: "train",
+    label: "Commuter Train",
+    icon: "🚆",
+    color: "#6366f1",
+    bg: "#e0e7ff",
+    baseFare: 2.50,
+    ratePerKm: 0.13,
+    speedKmh: 70,
+    co2GPerKm: 41,
+    calcFare(dist) {
+      return this._override ?? (this.baseFare + dist * this.ratePerKm);
+    }
+  },
+  {
+    id: "metro",
+    label: "Metro / Subway",
+    icon: "🚇",
+    color: "#8b5cf6",
+    bg: "#ede9fe",
+    baseFare: 1.50,
+    ratePerKm: 0.10,
+    speedKmh: 35,
+    co2GPerKm: 35,
+    calcFare(dist) {
+      return this._override ?? (this.baseFare + dist * this.ratePerKm);
+    }
+  },
+  {
+    id: "bicycle",
+    label: "Bicycle",
+    icon: "🚲",
+    color: "#0ea5e9",
+    bg: "#e0f2fe",
+    baseFare: 0,
+    ratePerKm: 0.015, // maintenance
+    speedKmh: 16,
+    co2GPerKm: 0,
+    calcFare(dist) {
+      return dist * this.ratePerKm;
+    }
+  },
+  {
+    id: "escooter",
+    label: "E-Scooter",
+    icon: "🛴",
+    color: "#f97316",
+    bg: "#ffedd5",
+    baseFare: 1.00,
+    ratePerKm: 0.25,
+    speedKmh: 20,
+    co2GPerKm: 22,
+    calcFare(dist) {
+      return this._override ?? (this.baseFare + dist * this.ratePerKm);
+    }
+  },
+  {
+    id: "rideshare",
+    label: "Rideshare",
+    icon: "🚖",
+    color: "#ec4899",
+    bg: "#fce7f3",
+    baseFare: 2.50,
+    ratePerKm: 0.85,
+    speedKmh: 35,
+    co2GPerKm: 140,
+    calcFare(dist) {
+      return this._override ?? (this.baseFare + dist * this.ratePerKm);
+    }
+  },
+  {
+    id: "walk",
+    label: "Walking",
+    icon: "🚶",
+    color: "#6b7280",
+    bg: "#f3f4f6",
+    baseFare: 0,
+    ratePerKm: 0,
+    speedKmh: 5,
+    co2GPerKm: 0,
+    calcFare() { return 0; }
+  }
+];
+
+// Active modes set
+const activeIds = new Set(["car","bus","train","metro","rideshare"]);
+
+// ── Build mode toggles ──
+const modeTogglesEl = document.getElementById("modeToggles");
+MODES.forEach(m => {
+  const lbl = document.createElement("label");
+  lbl.className = "mode-toggle" + (activeIds.has(m.id) ? " active" : "");
+  lbl.innerHTML = `<input type="checkbox" value="${m.id}" ${activeIds.has(m.id) ? "checked" : ""}>
+    <span class="dot"></span>${m.icon} ${m.label}`;
+  lbl.querySelector("input").addEventListener("change", e => {
+    if (e.target.checked) activeIds.add(m.id); else activeIds.delete(m.id);
+    lbl.classList.toggle("active", e.target.checked);
+  });
+  modeTogglesEl.appendChild(lbl);
+});
+
+// ─────────────────────────────────────────────
+//  State
+// ─────────────────────────────────────────────
+let lastResults = [];
+let lastMeta = {};
+
+// ─────────────────────────────────────────────
+//  Compare
+// ─────────────────────────────────────────────
+function compare() {
+  const dist   = parseFloat(document.getElementById("distance").value);
+  const trips  = parseInt(document.getElementById("trips").value, 10);
+  const fuel   = parseFloat(document.getElementById("fuelPrice").value);
+  const sym    = document.getElementById("currency").value.trim() || "$";
+
+  // Validate
+  const errEl = document.getElementById("errorMsg");
+  errEl.style.display = "none";
+  if (!dist || dist <= 0)  { showErr("Please enter a valid distance (> 0 km)."); return; }
+  if (!trips || trips < 1) { showErr("Trips per month must be at least 1."); return; }
+  if (!fuel || fuel <= 0)  { showErr("Please enter a valid fuel price."); return; }
+  if (activeIds.size === 0){ showErr("Select at least one transport mode."); return; }
+
+  // Apply overrides
+  const overrides = {
+    bus:      document.getElementById("busFare").value,
+    train:    document.getElementById("trainFare").value,
+    metro:    document.getElementById("metroFare").value,
+    rideshare:document.getElementById("rideFare").value,
+  };
+  MODES.forEach(m => {
+    m._override = overrides[m.id] !== undefined && overrides[m.id] !== ""
+      ? parseFloat(overrides[m.id]) : undefined;
+  });
+
+  const selected = MODES.filter(m => activeIds.has(m.id));
+
+  const rows = selected.map(m => {
+    const oneWay   = m.calcFare(dist, fuel);
+    const monthly  = oneWay * trips;
+    const annual   = monthly * 12;
+    const timeMin  = Math.round((dist / m.speedKmh) * 60);
+    const co2g     = Math.round(dist * m.co2GPerKm);
+    return { mode: m, oneWay, monthly, annual, timeMin, co2g };
+  });
+
+  rows.sort((a, b) => a.monthly - b.monthly);
+
+  const maxCost = Math.max(...rows.map(r => r.monthly));
+  const minCost = rows[0].monthly;
+  const minTime = Math.min(...rows.map(r => r.timeMin));
+  const bestCostId = rows[0].mode.id;
+  const bestTimeId = rows.reduce((a, b) => a.timeMin < b.timeMin ? a : b).mode.id;
+
+  lastResults = rows;
+  lastMeta = { dist, trips, fuel, sym, date: new Date().toLocaleDateString() };
+
+  // ── Render summary strip ──
+  const strip = document.getElementById("summaryStrip");
+  strip.style.display = "grid";
+  strip.innerHTML = `
+    <div class="stat-box">
+      <div class="label">Distance</div>
+      <div class="value">${dist} km</div>
+      <div class="sub">one-way</div>
+    </div>
+    <div class="stat-box">
+      <div class="label">Cheapest / trip</div>
+      <div class="value">${sym}${minCost > 0 ? fmt(rows[0].oneWay) : "Free"}</div>
+      <div class="sub">${rows[0].mode.icon} ${rows[0].mode.label}</div>
+    </div>
+    <div class="stat-box">
+      <div class="label">Cheapest / month</div>
+      <div class="value">${sym}${fmt(minCost)}</div>
+      <div class="sub">${trips} trips</div>
+    </div>
+    <div class="stat-box">
+      <div class="label">Fastest mode</div>
+      <div class="value">${rows.find(r=>r.mode.id===bestTimeId).timeMin} min</div>
+      <div class="sub">${rows.find(r=>r.mode.id===bestTimeId).mode.icon} ${rows.find(r=>r.mode.id===bestTimeId).mode.label}</div>
+    </div>
+    <div class="stat-box">
+      <div class="label">Modes compared</div>
+      <div class="value">${rows.length}</div>
+      <div class="sub">selected</div>
+    </div>
+  `;
+
+  // ── Render table ──
+  const tbody = document.getElementById("resultsBody");
+  tbody.innerHTML = rows.map(r => {
+    const barPct = maxCost > 0 ? Math.max(4, Math.round((r.monthly / maxCost) * 100)) : 4;
+    const isBestCost = r.mode.id === bestCostId;
+    const isBestTime = r.mode.id === bestTimeId;
+    const rowClass = isBestCost ? "row-best-cost" : (isBestTime ? "row-best-time" : "");
+    const badges = [
+      isBestCost ? `<span class="badge tag-cheapest">Cheapest</span>` : "",
+      isBestTime ? `<span class="badge tag-fastest">Fastest</span>` : "",
+    ].filter(Boolean).join(" ");
+    return `
+      <tr class="${rowClass}">
+        <td>
+          <div class="mode-cell">
+            <div class="mode-icon" style="background:${r.mode.bg};color:${r.mode.color};">${r.mode.icon}</div>
+            <div>
+              <div class="mode-name">${r.mode.label}</div>
+              <div class="mode-sub">${r.mode.speedKmh} km/h avg</div>
+            </div>
+          </div>
+        </td>
+        <td><strong>${sym}${r.oneWay === 0 ? "0.00" : fmt(r.oneWay)}</strong></td>
+        <td>
+          <div class="cost-bar-wrap">
+            <div class="cost-bar-bg"><div class="cost-bar-fill" style="width:${barPct}%;background:${r.mode.color};"></div></div>
+            <span class="cost-val">${sym}${fmt(r.monthly)}</span>
+          </div>
+        </td>
+        <td><strong>${sym}${fmt(r.annual)}</strong></td>
+        <td>${r.timeMin} min</td>
+        <td>${r.co2g > 0 ? r.co2g + " g" : "0 g"}</td>
+        <td>${badges}</td>
+      </tr>`;
+  }).join("");
+
+  document.getElementById("resultMeta").textContent =
+    `${dist} km · ${trips} trips/month · fuel ${sym}${fuel}/L`;
+
+  document.getElementById("resultsCard").style.display = "block";
+  document.getElementById("emptyCard").style.display = "none";
+}
+
+function showErr(msg) {
+  const el = document.getElementById("errorMsg");
+  el.textContent = msg;
+  el.style.display = "block";
+}
+
+function fmt(n) {
+  return n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+}
+
+function resetForm() {
+  document.getElementById("distance").value = "12";
+  document.getElementById("trips").value    = "44";
+  document.getElementById("fuelPrice").value = "1.65";
+  document.getElementById("currency").value  = "$";
+  ["busFare","trainFare","metroFare","rideFare"].forEach(id => {
+    document.getElementById(id).value = "";
+  });
+  document.getElementById("resultsCard").style.display = "none";
+  document.getElementById("summaryStrip").style.display = "none";
+  document.getElementById("emptyCard").style.display = "block";
+  document.getElementById("errorMsg").style.display = "none";
+  lastResults = [];
+}
+
+// ─────────────────────────────────────────────
+//  Downloads
+// ─────────────────────────────────────────────
+function downloadCSV() {
+  if (!lastResults.length) return;
+  const { sym, dist, trips, fuel, date } = lastMeta;
+  const header = ["Mode","Icon","One-Way Fare","Monthly Cost","Annual Cost","Est. Time (min)","CO2 per trip (g)"];
+  const rows = lastResults.map(r => [
+    r.mode.label,
+    r.mode.icon,
+    r.oneWay.toFixed(2),
+    r.monthly.toFixed(2),
+    r.annual.toFixed(2),
+    r.timeMin,
+    r.co2g
+  ]);
+  const meta = [
+    [`Distance (km)`,dist],
+    [`Trips / month`,trips],
+    [`Fuel price`,`${sym}${fuel}`],
+    [`Date`,date],
+    [],
+    header,
+    ...rows
+  ];
+  const csv = meta.map(r => r.map(c => `"${c}"`).join(",")).join("\n");
+  triggerDownload("commute-fare-comparison.csv", "text/csv", csv);
+}
+
+function downloadJSON() {
+  if (!lastResults.length) return;
+  const { sym, dist, trips, fuel, date } = lastMeta;
+  const out = {
+    meta: { distanceKm: dist, tripsPerMonth: trips, fuelPricePerLitre: fuel, currency: sym, date },
+    results: lastResults.map(r => ({
+      mode: r.mode.label,
+      oneWayFare: +r.oneWay.toFixed(2),
+      monthlyCost: +r.monthly.toFixed(2),
+      annualCost: +r.annual.toFixed(2),
+      estTravelTimeMin: r.timeMin,
+      co2PerTripGrams: r.co2g
+    }))
+  };
+  triggerDownload("commute-fare-comparison.json", "application/json", JSON.stringify(out, null, 2));
+}
+
+function downloadTXT() {
+  if (!lastResults.length) return;
+  const { sym, dist, trips, fuel, date } = lastMeta;
+  const line = (s="") => s;
+  const sep  = "─".repeat(62);
+  const col  = (s, w) => String(s).padEnd(w);
+  const rcol = (s, w) => String(s).padStart(w);
+  let txt = [
+    "COMMUTE FARE COMPARATOR — REPORT",
+    sep,
+    `Date         : ${date}`,
+    `Distance     : ${dist} km (one-way)`,
+    `Trips/month  : ${trips}`,
+    `Fuel price   : ${sym}${fuel} / litre`,
+    sep,
+    col("Mode",18) + rcol("One-Way",10) + rcol("Monthly",12) + rcol("Annual",12) + rcol("Time",8) + rcol("CO₂",8),
+    col("────",18) + rcol("───────",10) + rcol("───────",12) + rcol("──────",12) + rcol("────",8) + rcol("───",8),
+    ...lastResults.map(r =>
+      col(r.mode.label,18) +
+      rcol(`${sym}${r.oneWay.toFixed(2)}`,10) +
+      rcol(`${sym}${r.monthly.toFixed(2)}`,12) +
+      rcol(`${sym}${r.annual.toFixed(2)}`,12) +
+      rcol(`${r.timeMin}m`,8) +
+      rcol(`${r.co2g}g`,8)
+    ),
+    sep,
+    `Cheapest mode : ${lastResults[0].mode.label} (${sym}${lastResults[0].monthly.toFixed(2)}/month)`,
+    sep
+  ].join("\n");
+  triggerDownload("commute-fare-report.txt", "text/plain", txt);
+}
+
+function triggerDownload(filename, mime, content) {
+  const blob = new Blob([content], { type: mime });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+</script>
+</body>
+</html>
